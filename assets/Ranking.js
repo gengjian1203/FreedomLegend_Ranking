@@ -43,7 +43,7 @@ cc.Class({
     wx.onMessage( data => {
       // console.log(data.message);
       if (data.message === 'getRanking') {
-        this.setRankingData(data.type);
+        this.setRankingData(data.type, data.openid);
       }
     });
   },
@@ -55,7 +55,8 @@ cc.Class({
   //////////////////////////////////////////////////
   // 获取排行榜列表数据
   // param: nType 0 - 'level', 1 - 'gold', 2 - 'money'
-  setRankingData(nType) {
+  // param: openid
+  setRankingData(nType, openid) {
     const strKey = this.constType[nType];
     // 清除原有数据
     if (this.m_content) {
@@ -66,13 +67,19 @@ cc.Class({
       keyList: [strKey],
       success: (res) => {
         console.log('getFriendCloudStorage', res);
-        
+        let nIndexMyself = 0;
         // 对获取数据进行排序
         this.sortRankingData(res.data);
         for (let i = 0; i < res.data.length; i++) {
+          // 找到自己保存序号
+          if (res.data[i].openid === openid) {
+            nIndexMyself = i;
+          }
           console.log('Ranking....', res.data[i]);
           this.createUserItem(i, res.data[i]);
         }
+        // 渲染自身数据
+        this.createUserItemMeself(nIndexMyself, res.data[nIndexMyself]);
       },
       fail: (res) => {
           console.error(res);
@@ -98,7 +105,7 @@ cc.Class({
   },  
 
   // 渲染一个预制体成员
-  createUserItem (index, user) {
+  createUserItem(index, user) {
     console.log('createUserItem', index, user);
     let item = cc.instantiate(this.m_prefabUserItem);
     let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
@@ -106,7 +113,27 @@ cc.Class({
     item.x = 0;
     item.y = -660 - index * 100;
     
-    item.getChildByName('userIndex').getComponent(cc.Label).string = String(index);
+    item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
+    item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
+    item.getChildByName('userValue').getComponent(cc.Label).string = wxgame.level || wxgame.gold || wxgame.money;
+    cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
+      if (err) {
+        console.error(err);
+      }
+      item.getChildByName('userAvatar').getComponent(cc.Sprite).spriteFrame = new cc.SpriteFrame(texture);
+    });
+  },
+
+  // 渲染自身
+  createUserItemMeself(index, user) {
+    console.log('createUserItem', index, user);
+    let item = cc.instantiate(this.m_prefabUserItem);
+    let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
+    this.m_content.addChild(item);
+    item.x = 0;
+    item.y = -1720;
+    
+    item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
     item.getChildByName('userValue').getComponent(cc.Label).string = wxgame.level || wxgame.gold || wxgame.money;
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
