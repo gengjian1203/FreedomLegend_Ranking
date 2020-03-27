@@ -68,9 +68,11 @@ cc.Class({
       success: (res) => {
         console.log('getFriendCloudStorage', res);
         let nIndexMyself = 0;
+        const nLength = res.data.length > 10 ? 10 : res.data.length;
         // 对获取数据进行排序
         this.sortRankingData(res.data);
-        for (let i = 0; i < res.data.length; i++) {
+
+        for (let i = 0; i < nLength; i++) {
           // 找到自己保存序号
           if (res.data[i].openid === openid) {
             nIndexMyself = i;
