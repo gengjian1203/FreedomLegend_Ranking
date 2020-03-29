@@ -89,10 +89,10 @@ cc.Class({
             nIndexMyself = i;
           }
           console.log('Ranking....', res.data[i]);
-          this.createUserItem(i, res.data[i]);
+          this.createUserItem(i, res.data[i], nType);
         }
         // 渲染自身数据
-        this.createUserItemMeself(nIndexMyself, res.data[nIndexMyself]);
+        this.createUserItemMeself(nIndexMyself, res.data[nIndexMyself], nType);
       },
       fail: (res) => {
           console.error(res);
@@ -107,10 +107,25 @@ cc.Class({
   //////////////////////////////////////////////////
   // 自定义函数
   //////////////////////////////////////////////////
+  // 通过当前等级，计算当前的境界
+  getTasteString(level) {
+    let strResult = '';
+    const arrTasteHeader = ['筑基', '开光', '融合', '心动', '金丹', '元婴', '出窍', '分神', '合体', '洞虚', '大乘', '渡劫', '散仙', '灵仙', '真仙', '玄仙', '金仙', '准圣', '圣人', '鸿蒙'];
+    const arrTasteTail = ['一重', '二重', '三重', '四重', '五重', '六重', '七重', '八重', '九重', '十重'];
+    strResult = `${arrTasteHeader[Math.floor(level / 10)]}${arrTasteTail[level % 10]}`
+    return strResult;
+  },
+
   // 取到一个安全的Value
-  getSafeValue(objWxgame) {
+  getSafeValue(objWxgame, nType) {
     let value = objWxgame[this.constType[0]] || objWxgame[this.constType[1]] || objWxgame[this.constType[2]];
     value = value ? value : 0;
+    if (nType === 0) {
+      if (value > 199) {
+        value = 199;
+      }
+      value = this.getTasteString(value);
+    }
     return value;
   },
 
@@ -143,8 +158,8 @@ cc.Class({
   },  
 
   // 渲染一个预制体成员
-  createUserItem(index, user) {
-    console.log('createUserItem', index, user);
+  createUserItem(index, user, nType) {
+    console.log('createUserItem', index, user, nType);
     let item = cc.instantiate(this.m_prefabUserItem);
     let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
     this.m_content.addChild(item);
@@ -153,7 +168,7 @@ cc.Class({
     
     item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
-    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame);
+    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame, nType);
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
       if (err) {
         console.error(err);
@@ -163,8 +178,8 @@ cc.Class({
   },
 
   // 渲染自身
-  createUserItemMeself(index, user) {
-    console.log('createUserItem', index, user);
+  createUserItemMeself(index, user, nType) {
+    console.log('createUserItem', index, user, nType);
     let item = cc.instantiate(this.m_prefabUserItem);
     let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
     this.m_content.addChild(item);
@@ -173,7 +188,7 @@ cc.Class({
     
     item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
-    item.getChildByName('userValue').getComponent(cc.Label).string = wxgame.level || wxgame.gold || wxgame.money;
+    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame, nType);
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
       if (err) {
         console.error(err);
