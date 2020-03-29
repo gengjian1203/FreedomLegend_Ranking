@@ -48,6 +48,14 @@ cc.Class({
     });
   },
 
+  onEnable () {
+    console.log('Ranking onEnable...');
+  },
+
+  onDisable () {
+    console.log('Ranking onDisable...');
+  },
+
   // update (dt) {},
 
   //////////////////////////////////////////////////
@@ -69,6 +77,9 @@ cc.Class({
         console.log('getFriendCloudStorage', res);
         let nIndexMyself = 0;
         const nLength = res.data.length > 10 ? 10 : res.data.length;
+
+        // 对获取数据进行自检
+        this.checkRankingData(res.data, strKey);
         // 对获取数据进行排序
         this.sortRankingData(res.data);
 
@@ -96,12 +107,37 @@ cc.Class({
   //////////////////////////////////////////////////
   // 自定义函数
   //////////////////////////////////////////////////
+  // 取到一个安全的Value
+  getSafeValue(objWxgame) {
+    let value = objWxgame[this.constType[0]] || objWxgame[this.constType[1]] || objWxgame[this.constType[2]];
+    value = value ? value : 0;
+    return value;
+  },
+
+  // 检验排行榜数据
+  checkRankingData(data, strKey) {
+    data.forEach((item) => {
+      // 如果没有数值，就置零作为保护数据
+      if (item.KVDataList.length === 0) {
+        const tmpObj = {
+          key: strKey,
+          value: `{"wxgame":{"${strKey}":0,"update_time":0}}`
+        }
+        item.KVDataList.push(tmpObj);
+      }
+    });
+    console.log('checkRankingData', data);
+  },
+
+  // 排行榜数据排序
   sortRankingData(data) {
     data.sort((userA, userB) => {
       const wxgameA = JSON.parse(userA.KVDataList[0].value).wxgame;
       const wxgameB = JSON.parse(userB.KVDataList[0].value).wxgame;
-      const valueA = wxgameA.level || wxgameA.gold || wxgameA.money;
-      const valueB = wxgameB.level || wxgameB.gold || wxgameB.money;
+      let valueA = this.getSafeValue(wxgameA);
+      let valueB = this.getSafeValue(wxgameB);
+      valueA = valueA ? valueA : 0;
+      valueB = valueB ? valueB : 0;
       return valueB - valueA;
     })
   },  
@@ -117,7 +153,7 @@ cc.Class({
     
     item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
-    item.getChildByName('userValue').getComponent(cc.Label).string = wxgame.level || wxgame.gold || wxgame.money;
+    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame);
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
       if (err) {
         console.error(err);
