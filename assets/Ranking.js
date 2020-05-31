@@ -13,7 +13,7 @@ cc.Class({
 
   ctor() {
     // 排名类型
-    this.constType = ['level', 'gold', 'money'];
+    this.constType = ['level', 'power', 'sportsNumber'];
 
   },
 
@@ -62,7 +62,7 @@ cc.Class({
   // 交互事件
   //////////////////////////////////////////////////
   // 获取排行榜列表数据
-  // param: nType 0 - 'level', 1 - 'gold', 2 - 'money'
+  // param: nType 0 - 'level', 1 - 'power', 2 - 'sportsNumber'
   // param: openid
   setRankingData(nType, openid) {
     const strKey = this.constType[nType];
@@ -80,16 +80,17 @@ cc.Class({
 
         // 对获取数据进行自检
         this.checkRankingData(res.data, strKey);
-        // 对获取数据进行排序
-        this.sortRankingData(res.data);
+        // 对获取数据进行排序 0-降序 1升序
+        const nSortType = nType === 2 ? 1 : 0;
+        this.sortRankingData(res.data, nType, nSortType);
 
         for (let i = 0; i < nLength; i++) {
           // 找到自己保存序号
-          if (res.data[i].openid === openid) {
-            nIndexMyself = i;
+          if (res.data[i % nLength].openid === openid) {
+            nIndexMyself = i % nLength;
           }
-          console.log('Ranking....', res.data[i]);
-          this.createUserItem(i, res.data[i], nType);
+          console.log('Ranking....', res.data[i % nLength]);
+          this.createUserItem(i, res.data[i % nLength], nType);
         }
         // 渲染自身数据
         this.createUserItemMeself(nIndexMyself, res.data[nIndexMyself], nType);
@@ -116,8 +117,22 @@ cc.Class({
     return strResult;
   },
 
-  // 取到一个安全的Value
+  // 取到一个安全的Value用来比较
+  // nType: Number 0 - 'level', 1 - 'power', 2 - 'sportsNumber'
   getSafeValue(objWxgame, nType) {
+    let value = objWxgame[this.constType[0]] || objWxgame[this.constType[1]] || objWxgame[this.constType[2]];
+    value = value ? value : 0;
+    if (nType === 2) {
+      if (value > 9999 || value === 0) {
+        value = '10000';
+      }
+    }
+    return value;
+  },
+
+  // 取到一个安全的Value用来显示 只有带参数nType才去特殊解析
+  // nType: Number 0 - 'level', 1 - 'power', 2 - 'sportsNumber'
+  getSafeValueString(objWxgame, nType) {
     let value = objWxgame[this.constType[0]] || objWxgame[this.constType[1]] || objWxgame[this.constType[2]];
     value = value ? value : 0;
     if (nType === 0) {
@@ -125,6 +140,11 @@ cc.Class({
         value = 199;
       }
       value = this.getTasteString(value);
+    }
+    if (nType === 2) {
+      if (value > 9999 || value === 0) {
+        value = '9999+';
+      }
     }
     return value;
   },
@@ -144,16 +164,20 @@ cc.Class({
     console.log('checkRankingData', data);
   },
 
-  // 排行榜数据排序
-  sortRankingData(data) {
+  // 对获取数据进行排序 
+  // nType: Number 0 - 'level', 1 - 'power', 2 - 'sportsNumber'
+  // nSortType: Number 0-降序 1-升序
+  sortRankingData(data, nType, nSortType) {
     data.sort((userA, userB) => {
       const wxgameA = JSON.parse(userA.KVDataList[0].value).wxgame;
       const wxgameB = JSON.parse(userB.KVDataList[0].value).wxgame;
-      let valueA = this.getSafeValue(wxgameA);
-      let valueB = this.getSafeValue(wxgameB);
+
+      let valueA = this.getSafeValue(wxgameA, nType);
+      let valueB = this.getSafeValue(wxgameB, nType);
       valueA = valueA ? valueA : 0;
       valueB = valueB ? valueB : 0;
-      return valueB - valueA;
+      const nResult = nSortType === 1 ? valueA - valueB : valueB - valueA;
+      return nResult;
     })
   },  
 
@@ -164,11 +188,12 @@ cc.Class({
     let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
     this.m_content.addChild(item);
     item.x = 0;
-    item.y = -660 - index * 100;
+    item.y = -100 + -index * 100;
+    this.m_content.height = index * 100
     
     item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
-    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame, nType);
+    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValueString(wxgame, nType);
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
       if (err) {
         console.error(err);
@@ -182,13 +207,13 @@ cc.Class({
     console.log('createUserItem', index, user, nType);
     let item = cc.instantiate(this.m_prefabUserItem);
     let wxgame = JSON.parse(user.KVDataList[0].value).wxgame;
-    this.m_content.addChild(item);
+    this.m_background.addChild(item);
     item.x = 0;
-    item.y = -1720;
+    item.y = 200;
     
     item.getChildByName('userIndex').getComponent(cc.Label).string = String(index + 1);
     item.getChildByName('userName').getComponent(cc.Label).string = user.nickName || user.nickname;
-    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValue(wxgame, nType);
+    item.getChildByName('userValue').getComponent(cc.Label).string = this.getSafeValueString(wxgame, nType);
     cc.loader.load({url: user.avatarUrl, type: 'png'}, (err, texture) => {
       if (err) {
         console.error(err);
